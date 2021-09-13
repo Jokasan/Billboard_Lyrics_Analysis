@@ -1,5 +1,5 @@
 ---
-title: "Analysis of Bilboard lyrics 1994-2015"
+title: "Analysis of Bilboard lyrics 1965-2015"
 author: "Nils Indreiten"
 date: "10/09/2021"
 output:
