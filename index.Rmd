@@ -1,0 +1,176 @@
+---
+title: "Analysis of Bilboard lyrics 1994-2015"
+author: "Nils Indreiten"
+date: "10/09/2021"
+output:
+  distill::distill_article:
+    toc: true
+    toc_depth: 2
+editor_options: 
+  markdown: 
+    wrap: 72
+---
+
+```{r setup, include=FALSE, message=FALSE}
+pacman::p_load(tidyverse, tidytext,knitr)
+knitr::opts_chunk$set(echo = TRUE)
+lyrics <- read.csv("billboard_lyrics_1964-2015.csv")
+```
+
+> This analysis was inspired by part 5 of [Julia Silge's *Test mining
+> with tidy data
+> principles*](https://juliasilge.shinyapps.io/learntidytext/#section-singing-a-different-tune)
+> course. The data set was curated by [Karylin
+> Pavlik](https://github.com/walkerkq/musiclyrics) and contains songs
+> that listed on Billboard's Year-End Hot 100 throughout five decades.
+
+# Tidying song lyrics
+
+The variables in this dataset are the following:
+
+```{r, fig.align='center',echo=FALSE}
+t1 <- tribble(~Variable,~Detail,
+              "rank", "the rank a song achieved on the Billboard Year-End Hot 100",
+              "song","the song's title",
+              "artist", "the artist who recorded the song",
+              "year","the year the song reached the given rank on the Billboard chart",
+              "lyrics","the lyrics of the song")
+knitr::kable(t1)
+```
+
+The dataset consists of more than 5000 songs, spanning from 1985 to
+2015. The lyrics are in one column, so we need to convert it into tidy
+format. We can do so by using the `unnest_token()` function, tokenising
+and tidying the lyrics, creating a new `word` column:
+
+```{r}
+tidy_lyrics <- lyrics %>% 
+  # transform lyrics into word column
+  unnest_tokens(word, Lyrics)
+
+head(tidy_lyrics) %>% kable()
+```
+
+## Data exploration:
+
+We might be interested in what the most common words in the song lyrics
+are. We can see that words like 'you','the' and 'my' are among the most
+common words. In contrast, words like 'bottle', 'thang' and 'american'
+are the least common words:
+
+```{r, fig.align='center'}
+tidy_lyrics %>% 
+  count(word, sort=TRUE) %>% head()
+```
+
+```{r}
+tidy_lyrics %>% 
+  count(word, sort=TRUE) %>% tail()
+```
+
+The relationship between number of words in songs being released by
+artists over the decades, seems to be positively correlated, that is, as
+the years increases so too does the number of words in songs.
+
+```{r, fig.align='center', message=FALSE}
+tidy_lyrics %>% 
+  count(Year,Song) %>% 
+  filter(n>1) %>% # Filter to include words appearing more than only one time
+  ggplot(aes(Year,n))+
+  geom_point(alpha=0.4, size=5,color="orange")+
+  geom_smooth(method="lm", color="black")+
+  theme_minimal()
+```
+
+Lets try to figure out which songs have very few or very many words:
+
+```{r}
+tidy_lyrics %>% 
+  count(Year, Song) %>% 
+  arrange(-n) %>%  # modify to raange(n) to display the songs with least words 
+head()
+```
+
+We can extract a song of interest using `filter()`, in this case we
+filter for "wipe out" by The Surfaris:
+
+```{r}
+lyrics %>% 
+  filter(Song == "wipe out") 
+```
+
+# Pop Vocab over the decades
+
+In order to explore the evolution of pop song vocabulary over the
+decades we can build some linear models. The first step is to create a
+data set of word counts. This involves counting the number of words used
+in each song each year, group the data by year and create a new column
+containing the total words used each year. Finally we filter the data
+set to only include words above 500 total uses, as we don't want to
+train models with words that are used sparingly:
+
+```{r, message=FALSE}
+word_counts <- tidy_lyrics %>% 
+  anti_join(get_stopwords()) %>% 
+  count(Year, word) %>% 
+  # group by `year`
+  group_by(Year) %>%
+  # create a new column for the total words per year
+  mutate(year_total = sum(n)) %>% 
+  ungroup() %>% 
+  # now group by `word`
+  group_by(word) %>% 
+  # keep only words used more than 500 times
+  filter(sum(n) > 500) %>% 
+  ungroup()
+
+word_counts
+```
+
+Now that we have our data set, we can use it to train many models, one
+per word. The `broom` package enables us to handle the model output. The
+creation of models involves creating list columns by nesting the word
+count data by word. We then use `mutate()` to create a new column for
+the models, thereby training a model for each word, where the number of
+*successes* (word counts) and *failures* (total counts per year) are
+predicted year:
+
+```{r, message=FALSE}
+library(broom)
+
+slopes <- word_counts %>%
+  nest_by(word) %>%
+  # create a new column for our `model` objects
+  mutate(model = list(glm(cbind(n, year_total) ~ Year, 
+                          family = "binomial", data = data))) %>%
+  summarize(tidy(model)) %>%
+  ungroup() %>%
+  # filter to only keep the "year" terms
+  filter(term == "Year") %>%
+  mutate(p.value = p.adjust(p.value)) %>%
+  arrange(estimate)
+
+slopes
+```
+
+We can use a volcano plot to visualise all the models we trained. This
+type of plot allows us to compare the effect size and statistical
+significance
+
+```{r}
+library(plotly)
+p <- slopes %>% 
+  ggplot(aes(estimate, p.value, label=word))+
+  geom_vline(xintercept = 0, lty=3, size=1.5, alpha=0.7, color="gray50")+
+  geom_point(color="pink", alpha=0.5, size=2.5)+
+  scale_y_log10()+
+  theme_light()
+
+ggplotly(p)
+```
+
+# Session Info
+
+```{r}
+sessionInfo()
+```

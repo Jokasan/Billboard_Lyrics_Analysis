@@ -1,0 +1,32 @@
+{
+    "id": "8F21807A",
+    "path": "~/Documents/R/Demos/Billboard_Lyrics_Analysis/index.Rmd",
+    "project_path": "index.Rmd",
+    "type": "r_markdown",
+    "hash": "0",
+    "contents": "",
+    "dirty": false,
+    "created": 1631286244216.0,
+    "source_on_save": false,
+    "relative_order": 1,
+    "properties": {
+        "tempName": "Untitled1",
+        "source_window_id": "",
+        "Source": "Source",
+        "cursorPosition": "53,0",
+        "scrollLine": "19",
+        "last_setup_crc32": "DF643468998fde63",
+        "rmdVisualMode": "true",
+        "rmdVisualModeLocation": "1642:764",
+        "rmdVisualWrapConfigured": "true",
+        "docOutlineVisible": "1"
+    },
+    "folds": "",
+    "lastKnownWriteTime": 1631522285,
+    "encoding": "UTF-8",
+    "collab_server": "",
+    "source_window": "",
+    "last_content_update": 1631522285349,
+    "read_only": false,
+    "read_only_alternatives": []
+}

@@ -1,0 +1,3 @@
+"0","pacman::p_load(tidyverse, tidytext,knitr)"
+"0","knitr::opts_chunk$set(echo = TRUE)"
+"0","lyrics <- read.csv(""billboard_lyrics_1964-2015.csv"")"
